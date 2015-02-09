@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
 		char* p = c;
 
 		//a little problem with this comparsion
-		while (*p != '\n')
+		while (*p != '\0')
 		{
 			if (*p == '#')
 			{
@@ -38,6 +38,8 @@ int main(int argc, char* argv[])
 			}	
 			else
 				out << *p;
+
+			p++;
 		}
 
 		switch (f)
