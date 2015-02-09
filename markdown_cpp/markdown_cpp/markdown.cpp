@@ -1,12 +1,21 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 using namespace std;
 
-enum flag
+enum tagType {none = 0, h1, h2, h3, h4, h5, h6, br, blockquote, li, code};
+
+int countNumberSign(string str)
 {
-	none,
-	header1,
-};
+	int count = 0;
+
+	while(str[count++] == '#');
+
+	if (count > 6 || 0 == count)
+		return 0;
+
+	return count--;
+}
 
 int main(int argc, char* argv[])
 {
@@ -17,44 +26,63 @@ int main(int argc, char* argv[])
 		return 0;
 	}	
 
-	ofstream out("test.html", std::ofstream::app);
+	ofstream out("test.html", std::ofstream::out);
 	out << "<html>\n" ;
 
+	char* lastLine = NULL;
+	
 	while (!in.eof())
 	{	
-		flag f = none;
-		char c[256];
-		in.getline(c, 256);
+		tagType tag = none;
+	
+		string line;
+		std::getline(in, line);
+		
+		//count the number of '#' at first
+		int numberSign = countNumberSign(line);
 
-		char* p = c;
-
-		//a little problem with this comparsion
-		while (*p != '\0')
+		if (numberSign > 0 )
 		{
-			if (*p == '#')
-			{
-				f = header1;
-				out << "<h1>";
-			}	
-			else
-				out << *p;
+			tag = (tagType)numberSign;
+			out << "<h" << tag << ">\n";
+		}
+		else
+		{
+			int curPos = (int)in.tellg();
+			
 
-			p++;
+			string lineNext;
+			std::getline(in, lineNext);
+
+			int count = 0;
+			while (lineNext[count++] == '=');
+			if (count == lineNext.size())
+				count = 1;
+
+			while(lineNext[count++] == '-');
+			if (count == lineNext.size())
+				count = 2;
+
+			tag = (tagType)count;
+			if (tag)
+				out << "<h" << tag << ">\n";
+
+			in.seekg(curPos);
+		}
+		
+		
+		int len = line.size();
+		for (int pos = numberSign; pos < len; ++pos)
+		{
+			out << line[pos];
 		}
 
-		switch (f)
-		{
-		case header1:
-			out << "</h1>\n";
-			break;
-		default:
-			break;
-		}
+		if (tag <= h6 && tag >= h1)
+			out << "</h" << tag << ">\n";
+
+		
 	}
 
 	out << "</html>";
-	//I'd better get the file with getline,to make sure to add the closing tag 
-	// add a <html> first at the begining of the file
-	// and not to forget the </html> at the end of the file
 	return 0;
 }
