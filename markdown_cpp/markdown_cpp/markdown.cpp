@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
 
 	ofstream out("test.html", std::ofstream::out);
 	out << "<html>\n" ;
+	bool isPageOn = false;
 	while (!in.eof())
 	{	
 		tagType tag = none;
@@ -73,10 +74,16 @@ int main(int argc, char* argv[])
 		//count the number of '#' at first
 		int numberSign = countNumberSign(line);
 
+		//atx header
 		if (numberSign > 0 )
 		{
+			if (isPageOn)
+			{
+				isPageOn = false;
+				out << "</p>\n";
+			}
 			tag = (tagType)numberSign;
-			out << "<h" << tag << ">\n";
+			out << "\n<h" << tag << ">\n";
 
 			in.seekg(posCur, ios::beg);
 			int len = line.size();
@@ -88,27 +95,51 @@ int main(int argc, char* argv[])
 			}
 
 			out << "</h" << tag << ">\n";
+			continue;
 		}
 
 		//is <hr/>
 		if (!isNextLineSetextH1(lineNext) && !isNextLineSetextH2(lineNext) && isTag_hr(line))
 		{
+			if (isPageOn)
+			{
+				isPageOn = false;
+				out << "</p>\n";
+			}
 			in.seekg(posCur, ios::beg);
-			out << "<hr/>\n";
+			out << "\n<hr/>\n";
 			continue;
 		}
 
+		//Setext header1
 		if (isNextLineSetextH1(lineNext) && numberSign == 0)
 		{
-			out << "<h1>" << line << "</h1>\n";
+			if (isPageOn)
+			{
+				isPageOn = false;
+				out << "</p>\n";
+			}
+			out << "\n<h1>" << line << "</h1>\n";
+			continue;
+		}
+		//Setext header2
+		if (isNextLineSetextH2(lineNext) && numberSign == 0)
+		{
+			if (isPageOn)
+			{
+				isPageOn = false;
+				out << "</p>\n";
+			}
+			out << "\n<h2>" << line << "</h2>\n";
 			continue;
 		}
 
-		if (isNextLineSetextH2(lineNext) && numberSign == 0)
-		{
-			out << "<h2>" << line << "</h2>\n";
-			continue;
-		}
+		//the ordinary text, just write to the .html file
+		in.seekg(posCur, ios::beg);
+		if (!isPageOn)
+			out << "\n<p>";
+		out << line << "\n";
+		isPageOn = true;
 	}
 
 	out << "</html>";
