@@ -14,7 +14,7 @@ int countNumberSign(string str)
 	if (count > 6 || 1 == count)
 		return 0;
 
-	return count--;
+	return count - 1;
 }
 
 bool isTag_hr(string& line)
@@ -27,34 +27,29 @@ bool isTag_hr(string& line)
 	return false;
 }
 
-tagType handleSetextHeader(ifstream& in)
+bool isNextLineSetextH1(string& lineNext)
 {
-	int posCur = (int)in.tellg();
-	string lineNext;
-	std::getline(in, lineNext);
-	tagType tag = none;
-	int pos = (int)in.tellg();
 	int count = 0;
 	while (count < (int)lineNext.size() && lineNext[count++] == '=');
 	if (count == lineNext.size())
-		tag = h1;
+		return true;
 
-	if (tag == none)
-	{
-		while(count < (int)lineNext.size() && lineNext[count++] == '-');
-		if (count == lineNext.size())
-			tag = h2;
-	}
+	return false;
+}
 
-	if (tag == none)
-		in.seekg(posCur, ios_base::beg);
+bool isNextLineSetextH2(string& lineNext)
+{
+	int count = 0;
+	while(count < (int)lineNext.size() && lineNext[count++] == '-');
+	if (count == lineNext.size())
+		return true;
 
-	return tag;
+	return false;
 }
 
 int main(int argc, char* argv[])
 {
-	ifstream in("test.md");
+	ifstream in("test.md", ios::in | ios::binary);
 	if (!in.is_open())
 	{
 		cout << "Error opening file" << endl;
@@ -63,25 +58,17 @@ int main(int argc, char* argv[])
 
 	ofstream out("test.html", std::ofstream::out);
 	out << "<html>\n" ;
-
-	char* lastLine = NULL;
-	
 	while (!in.eof())
 	{	
 		tagType tag = none;
 	
 		string line;
+		string lineNext;
 		std::getline(in, line);
-		
+		streampos posCur = in.tellg();
+		std::getline(in, lineNext);
 		if (line.empty())
 			continue;
-
-		//is <hr/>
-		if (isTag_hr(line))
-		{
-			out << "<hr/>\n";
-			continue;
-		}
 
 		//count the number of '#' at first
 		int numberSign = countNumberSign(line);
@@ -90,26 +77,38 @@ int main(int argc, char* argv[])
 		{
 			tag = (tagType)numberSign;
 			out << "<h" << tag << ">\n";
-		}
-		else
-		{
-			if (tag = handleSetextHeader(in))
+
+			in.seekg(posCur, ios::beg);
+			int len = line.size();
+			for (int pos = numberSign; pos < len; ++pos)
 			{
-				out << "<h" << tag << ">\n";
-				out << line ;
-				out << "</h" << tag << ">\n";
-				continue;
+				if (tag <= h6 && tag >= h1 && line[pos] == '#')
+					continue;
+				out << line[pos];
 			}
-		}
-		
-		int len = line.size();
-		for (int pos = numberSign; pos < len; ++pos)
-		{
-			out << line[pos];
+
+			out << "</h" << tag << ">\n";
 		}
 
-		if (tag <= h6 && tag >= h1)
-			out << "</h" << tag << ">\n";
+		//is <hr/>
+		if (!isNextLineSetextH1(lineNext) && !isNextLineSetextH2(lineNext) && isTag_hr(line))
+		{
+			in.seekg(posCur, ios::beg);
+			out << "<hr/>\n";
+			continue;
+		}
+
+		if (isNextLineSetextH1(lineNext) && numberSign == 0)
+		{
+			out << "<h1>" << line << "</h1>\n";
+			continue;
+		}
+
+		if (isNextLineSetextH2(lineNext) && numberSign == 0)
+		{
+			out << "<h2>" << line << "</h2>\n";
+			continue;
+		}
 	}
 
 	out << "</html>";
